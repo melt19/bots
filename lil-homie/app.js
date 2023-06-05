@@ -9,6 +9,7 @@ import {
 } from 'discord-interactions';
 import { VerifyDiscordRequest, getRandomEmoji, DiscordRequest } from './utils.js';
 import { getShuffledOptions, getResult } from './game.js';
+import { BaseChannel } from 'discord.js'
 
 // Create an express app
 const app = express();
@@ -19,14 +20,12 @@ app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY) }));
 
 // Store for in-progress games. In production, you'd want to use a DB
 const activeGames = {};
-
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
  */
 app.post('/interactions', async function (req, res) {
   // Interaction type and data
   const { type, id, data } = req.body;
-
   /**
    * Handle verification requests
    */
@@ -40,7 +39,7 @@ app.post('/interactions', async function (req, res) {
    */
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
-
+    
     // "test" command
     if (name === 'test') {
       // Send a message into the channel where command was triggered from
@@ -60,7 +59,7 @@ app.post('/interactions', async function (req, res) {
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           // Fetches a random emoji to send from a helper function
-          content: 'Playing ' + data.options[0].value + ' now ' + getRandomEmoji(),
+          content: 'Playing ' + data.options[0].value + ' nowish ' + getRandomEmoji(),
         },
       });
       
