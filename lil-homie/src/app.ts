@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { ChatInputCommandInteraction, Client, Collection, Events, GatewayIntentBits, REST } from 'discord.js'
+import { ChatInputCommandInteraction, Client, Events, GatewayIntentBits } from 'discord.js'
 import { joinVoice, ping, server } from "./commands.js"
 import { deployCommands } from './deploy-commands.js';
 

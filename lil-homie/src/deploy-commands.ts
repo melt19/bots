@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { REST, Routes } from 'discord.js'
 import { joinVoice, ping, server } from "./commands.js";
+import { CommandResponse } from './types.js';
 
 const { DISCORD_TOKEN, CLIENT_ID } = process.env
 export const deployCommands =() => { 
@@ -21,9 +22,9 @@ export const deployCommands =() => {
 			const data = await rest.put(
 				Routes.applicationCommands(CLIENT_ID),
 				{ body: commands },
-			)
+			) as CommandResponse
 			
-			console.log(data, `Successfully reloaded ${data.toString() || '0'} application (/) commands.`)
+			console.log(`Successfully reloaded application (/) commands. (${data.map(command => command['name'] || 'command_name_not_found')})`)
 		} catch (error) {
 			// And of course, make sure you catch and log any errors!
 			console.error(error)

@@ -20,6 +20,7 @@ export const server = {
 	},
 }
 
+
 export const joinVoice = {
 	data: new SlashCommandBuilder()
 		.setName('play')
@@ -29,10 +30,9 @@ export const joinVoice = {
 		const userID : string = '1106791857654075402' // interaction.user.id
 		const channelID : string = interaction.guild.members.cache.get(userID).voice.channel?.id
 		console.log('channelID', channelID)
-		// interaction.guild.members.cache.map(member => console.log(member.voice.channel.id))
-		// Object.entries(interaction.guild.voiceStates as Object).map(([key, value]) => console.log(key, value))
-		const channel = interaction.guild.channels.cache.get('1107578793507434520')
+		const channel = interaction.guild.channels.cache.get(channelID || '1107578793507434520')
 		const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator })
+		console.log('connection', connection)
 		return interaction.reply(`YEet`)
 	},
 }
