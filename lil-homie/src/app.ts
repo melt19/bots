@@ -5,7 +5,12 @@ import { deployCommands } from './deploy-commands.js';
 
 const { DISCORD_TOKEN } = process.env
 
-const client = new Client({ intents: [ GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages ] })
+const client = new Client({ intents: [ 
+  GatewayIntentBits.Guilds, 
+  GatewayIntentBits.MessageContent, 
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.GuildVoiceStates
+] })
 
 deployCommands()
 
