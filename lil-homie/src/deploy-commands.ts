@@ -1,14 +1,14 @@
 import 'dotenv/config'
 import { REST, Routes } from 'discord.js'
-import { joinVoice, ping, server } from "./commands.js";
+import { joinVoice, queuePlaylist, trnStats } from "./commands.js";
 import { CommandResponse } from './types.js';
 
 const { DISCORD_TOKEN, CLIENT_ID } = process.env
 export const deployCommands =() => { 
-	const commands = [];
-	commands.push(ping.data.toJSON())
-	commands.push(server.data.toJSON())
+	const commands = []
 	commands.push(joinVoice.data.toJSON())
+	commands.push(trnStats.data.toJSON())
+	commands.push(queuePlaylist.data.toJSON())
 
 	// Construct and prepare an instance of the REST module
 	const rest = new REST().setToken(DISCORD_TOKEN);

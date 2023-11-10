@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import { ChatInputCommandInteraction, Client, Events, GatewayIntentBits } from 'discord.js'
-import { joinVoice, ping, server } from "./commands.js"
+import { joinVoice, queuePlaylist, trnStats } from "./commands.js"
 import { deployCommands } from './deploy-commands.js';
 
 const { DISCORD_TOKEN } = process.env
@@ -9,15 +9,15 @@ const client = new Client({ intents: [
   GatewayIntentBits.Guilds, 
   GatewayIntentBits.MessageContent, 
   GatewayIntentBits.GuildMessages,
-  GatewayIntentBits.GuildVoiceStates
+  GatewayIntentBits.GuildVoiceStates,
 ] })
 
 deployCommands()
 
 client['commands'] = {}
-client['commands'][ping.data.name] = ping
-client['commands'][server.data.name] = server
 client['commands'][joinVoice.data.name] = joinVoice
+client['commands'][trnStats.data.name] = trnStats
+client['commands'][queuePlaylist.data.name] = queuePlaylist
 
 client.once(Events.ClientReady, ( ) => console.log(`${client.user?.tag} has logged in`))
 

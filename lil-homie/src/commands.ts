@@ -1,22 +1,12 @@
 import 'dotenv/config'
-import { SlashCommandBuilder, User } from 'discord.js'
-import { joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, demuxProbe, generateDependencyReport, StreamType, getVoiceConnection } from '@discordjs/voice';
-// import { youtube } from '@googleapis/youtube'
+import { APIApplicationCommandOptionChoice, ApplicationCommandChoicesOption, Interaction, Message, MessageFlags, SlashCommandBuilder, SlashCommandStringOption, TextChannel } from 'discord.js'
+import { joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, demuxProbe } from '@discordjs/voice';
 import { google } from 'googleapis'
 import ytdl from 'ytdl-core';
-import opus from '@discordjs/opus'
 import 'ffmpeg-static'
-
-
-export const ping = {
-	data: new SlashCommandBuilder()
-		.setName('ping')
-		.setDescription('Replies with Pong!'),
-	execute: async (interaction) => {
-		return interaction.reply('Pong!')
-	},
-}
-
+import axios from 'axios';
+import { profiles } from './profiles.js';
+import { titleCase } from './helper.js';
 
 export const server = {
 	data: new SlashCommandBuilder()
@@ -25,13 +15,6 @@ export const server = {
 	execute: async (interaction) => {
 		return interaction.reply(`Server name: ${interaction.guild.name}\nTotal members: ${interaction.guild.memberCount}`)
 	},
-}
-
-async function probeAndCreateResource(readableStream) {
-	const { stream, type } = await demuxProbe(readableStream)
-	console.log('stream', stream)
-	console.log('type', type)
-	return createAudioResource(stream, { inputType: type });
 }
 
 export const joinVoice = {
@@ -44,9 +27,8 @@ export const joinVoice = {
 				.setRequired(true)
 			),
 	execute: async (interaction) => {
-		const userID : string = '1106791857654075402' // interaction.user.id
+		const userID : string = interaction.user.id || '1106791857654075402'
 		const channelID : string = interaction.guild.members.cache.get(userID).voice.channel?.id
-		// console.log('channelID', channelID)
 		const channel = interaction.guild.channels.cache.get(channelID || '1107578793507434520')
 		const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator, selfDeaf: false, selfMute: false })
 		
@@ -59,8 +41,6 @@ export const joinVoice = {
 				noSubscriber: NoSubscriberBehavior.Pause,
 			},
 		})
-
-		const connection2 = await getVoiceConnection(channel.guild.id)
 
 		const youtube = google.youtube({
 			version: 'v3',
@@ -78,56 +58,106 @@ export const joinVoice = {
 
 		const songID : string = res.data.items.at(0).id.videoId || '' 
 
-				const stream = ytdl(`https://www.youtube.com/watch?v=${songID}`, {filter: 'audioonly', dlChunkSize: 0} )
+		const stream = ytdl(`https://www.youtube.com/watch?v=${songID}`, {filter: 'audioonly'} )
 
 		connection.subscribe(player)
 		player.play(createAudioResource(stream))
-		// var buffers = []
-		// stream.on('readable', ( buffer ) => {
-		// 	for (;;) {
-		// 		let buffer = stream.read()
-		// 		if (!buffer) { break }
-		// 		console.log(buffer)
-		// 		connection.playOpusPacket(encoder.encode(buffer))
-				
-		// 		buffers.push(Buffer.from(buffer))
-		// 	}
-		// })
+		player.on('error', error => console.log(`Oops, I whoopsied (${error})`))
+		connection.on('error', error => console.log(`Oops, Conn whoopsied (${error})`))
+		
+		return interaction.reply(`I'm playing ${interaction.options.get('song').value}`)
+	},
+}
 
-		// stream.on('end', ( ) => {
-		// 	const streamBuffer = Buffer.concat(buffers)
-		// 	// console.log('0x100000000', streamBuffer.length)
-		// 	for (let i = 0; i < buffers.length; i++) {
-		// 		// player.play(encoder.encode())
-		// 		// connection.playOpusPacket(buffers[i])
-		// 	}
-		// 	// const aaa = 
-		// 	// console.log(aaa) 
-		// })
+export const trnStats = {
+	data: new SlashCommandBuilder()
+		.setName('trn')
+		.setDescription('Get TRN Stats')
+		.addStringOption(option =>
+			option.setName('game')
+				.setDescription('Game')
+				.setRequired(true)
+			)
+		.addStringOption(option =>
+			option.setName('player')
+				.setDescription('Player')
+			),
+	execute: async (interaction) => {
+		const game : string = interaction.options.get('game').value
+		const user : string = interaction.options.get('player').value
 
+		const userIdentifier : string = `${profiles[game][user].username}-${profiles[game][user].identifier}`
+		if (userIdentifier.split('-').length !== 2) return interaction.reply(`Error: I don't know ${user}'s overwatch username`)
 
-		// const resource = await probeAndCreateResource(vid)
-		// console.log('vid', vid)
-		// const stream = ytdl("https://www.youtube.com/watch?v=_ovdm2yX4MA", { filter: 'audioonly', dlChunkSize: 0 })
-		// console.log('stream', stream)
-		// connection.setSpeaking(true)
-		// const buffers = [];
+		try {
+			await axios.get(`https://owapi.io/profile/pc/us/${userIdentifier}`)
+				.then(response => {
+					if (response.data.private as boolean) return interaction.reply(`${user} Account is private :(`)
+					const tankRank : string = response.data.competitive['tank']?.rank || 'None'
+					const dpsRank : string = response.data.competitive['offense']?.rank || 'None'
+					const suppRank : string = response.data.competitive['support']?.rank || 'None'
+					console.log(response.data, tankRank, dpsRank, suppRank)
 
-		// // node.js readable streams implement the async iterator protocol
-		// for await (const data of stream) {
-		// 	buffers.push(data);
-		// }
-		// const finalBuffer = Buffer.concat(buffers)
+					const winRatioQuick : string = Math.round((response.data.games.quickplay['won'] / response.data.games.quickplay['played']) * 1000) / 10 + '%'
+					const winRatioComp : string = Math.round((response.data.games.competitive['won'] / response.data.games.competitive['played']) * 1000) / 10 + '% Win Rate'
+					const playtimeQuick : string = (response.data.playtime.quickplay).split(':')[0] + ' hours'
+					const playtimeComp : string = (response.data.playtime.competitive).split(':')[0] + ' hours'
 
-		// const ws = vid.pipe(fs.createWriteStream('tmp_song'))
-		// console.log('ws', ws)
-		// const buffer = Buffer.from(fs.readFileSync('tmp_song'))
-		// console.log('buffer', buffer)
+					return interaction.reply(`### ${titleCase(user)} Overwatch Stats\n>>> **Competitive**\n\tTank Rank\t\t\t${tankRank}\n\tDPS Rank\t\t\t${dpsRank}\n\tSupport Rank\t\t${suppRank}\n\n\tWin Ratio\t${winRatioComp}\n\tPlaytime\t${playtimeComp}\n\n**Quick Play**\n\tWin Ratio\t${winRatioQuick}\n\tPlaytime\t${playtimeQuick}`)
+				})
+		} catch (err) {
+			console.log(err)
+			return interaction.reply(err)
+		}
+		
+		
+	},
+}
 
-		// const encoder = new opus.OpusEncoder(48000, 2)
-		// console.log(resource)
-		// player.play(resource)
+const playlists : { [ name: string ]: string[] } = {
+	'melt': ['feast bludnymph', 'she knows jcole', 'softcore the neighborhood'],
+	'lego': ['kryptonite three doors down', 'what ive done linkin park', 'numb linkin park', 'lovers on the sun david guetta', 'the pretender foo fighters', 'otherside red hot chilli peppers']
+}
 
-		return interaction.reply(`I'm playing ${interaction.options.get('song').value} -> ${res.data.items.at(0).id}`)
+const getChoices = ( choices : string[] ) : { name: string, value: string }[] => {
+	let choiceDict : { name: string, value: string }[] = []
+	choices.map(choice => choiceDict.push({ name: choice, value: choice }))
+	return choiceDict
+}
+
+export const queuePlaylist = {
+	data: new SlashCommandBuilder()
+		.setName('playlist')
+		.setDescription('Queue preset songs')
+		.addStringOption(option =>
+			option.setName('playlist')
+				.setDescription('Playlist')
+				.setChoices(...getChoices(Object.keys(playlists)))
+				.setRequired(true)
+			)
+		.addNumberOption(option =>
+			option.setName('number')
+				.setDescription('Number of Songs')
+				.setRequired(true)
+			),
+	execute: async (interaction) => {
+		const playlist : string = interaction.options.get('playlist').value || 'lego'
+		const number : number = interaction.options.get('number').value || 3
+
+		let playlistSongs : string[] = playlists[playlist]
+		let selectedSongs : string[] = []
+
+		for (let i = 0; i < number; i++) {
+			const index : number = Math.floor(Math.random() * playlistSongs.length)
+			selectedSongs.push(playlistSongs.splice(index, 1).at(0))
+		}
+
+		let channel : TextChannel = interaction.channel
+		selectedSongs.forEach( song => {
+			channel.send({ content: `p! play ${song}`, flags: MessageFlags.SuppressNotifications })//.then( (msg : Message) => msg.delete() )
+		})
+
+		return interaction.reply(`Queuing ${number} songs from playlist '${playlist}'`)
+		
 	},
 }
